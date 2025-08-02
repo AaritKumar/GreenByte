@@ -1,0 +1,66 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>E-Waste Footprint Tracker - Greenbyte</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <h1><i class="fas fa-leaf"></i> Greenbyte</h1>
+    <span>E-Waste Footprint Tracker</span>
+  </header>
+
+  <div class="container">
+    <div class="sidebar">
+      <div>
+        <a href="{% url 'identify' %}" class="{% if request.resolver_match.url_name == 'identify' %}active{% endif %}">
+          <i class="fas fa-search"></i> Identifier
+        </a>
+        <a href="{% url 'tracker' %}" class="{% if request.resolver_match.url_name == 'tracker' %}active{% endif %}">
+          <i class="fas fa-chart-line"></i> Tracker
+        </a>
+        <a href="{% url 'finder' %}" class="{% if request.resolver_match.url_name == 'finder' %}active{% endif %}">
+          <i class="fas fa-map-marker-alt"></i> Finder
+        </a>
+      </div>
+      <div>
+        {% if request.user.is_authenticated %}
+          <span><i class="fas fa-user-circle"></i> {{ request.user.username }}</span><br>
+          <a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        {% else %}
+          <a href="{% url 'login' %}"><i class="fas fa-sign-in-alt"></i> Login</a>
+          <a href="{% url 'signup' %}"><i class="fas fa-user-plus"></i> Signup</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="main">
+      {% if request.user.is_authenticated %}
+        <h2>{{ request.user.username }}'s E-Waste Footprint Tracker</h2>
+        {% if tracker %}
+          <div class="tracker-stats">
+            <br>
+            <p><strong>Total Devices Repurposed/Disposed:</strong> {{ tracker.total_devices }}</p>
+            <p><strong>Total CO2 Saved:</strong> {{ tracker.total_co2 }} kg</p>
+            <p><strong>Total Energy Saved:</strong> {{ tracker.total_kwh }} kWh</p>
+          </div>
+        {% else %}
+          <div class="tracker-stats">
+            <p><strong>Total Devices Repurposed/Disposed:</strong> 0</p>
+            <p><strong>Total CO2 Saved:</strong> 0 kg</p>
+            <p><strong>Total Energy Saved:</strong> 0 kWh</p>
+          </div>
+        {% endif %}
+      {% else %}
+        <h2>E-Waste Footprint Tracker</h2>
+        <p>Login to track your electronic waste footprint.</p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

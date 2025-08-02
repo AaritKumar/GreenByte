@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Find an E-Waste Center Near You - Greenbyte</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <h1><i class="fas fa-leaf"></i> Greenbyte</h1>
+    <span>Find an E-Waste Center Near You</span>
+  </header>
+
+  <div class="container">
+    <div class="sidebar">
+      <div>
+        <a href="{% url 'identify' %}" class="{% if request.resolver_match.url_name == 'identify' %}active{% endif %}">
+          <i class="fas fa-search"></i> Identifier
+        </a>
+        <a href="{% url 'tracker' %}" class="{% if request.resolver_match.url_name == 'tracker' %}active{% endif %}">
+          <i class="fas fa-chart-line"></i> Tracker
+        </a>
+        <a href="{% url 'finder' %}" class="{% if request.resolver_match.url_name == 'finder' %}active{% endif %}">
+          <i class="fas fa-map-marker-alt"></i> Finder
+        </a>
+      </div>
+      <div>
+        {% if request.user.is_authenticated %}
+          <span><i class="fas fa-user-circle"></i> {{ request.user.username }}</span><br>
+          <a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        {% else %}
+          <a href="{% url 'login' %}"><i class="fas fa-sign-in-alt"></i> Login</a>
+          <a href="{% url 'signup' %}"><i class="fas fa-user-plus"></i> Signup</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="main">
+      <h2>Find an E-Waste Center Near You</h2>
+    </div>
+  </div>
+</body>
+</html>

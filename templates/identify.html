@@ -1,0 +1,344 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Identifier - Greenbyte</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <h1><i class="fas fa-leaf"></i> Greenbyte</h1>
+    <span>Electronic Waste Identifier</span>
+  </header>
+
+  <div class="container">
+    <div class="sidebar">
+      <div>
+        <a href="{% url 'identify' %}" class="{% if request.resolver_match.url_name == 'identify' %}active{% endif %}">
+          <i class="fas fa-search"></i> Identifier
+        </a>
+        <a href="{% url 'tracker' %}" class="{% if request.resolver_match.url_name == 'tracker' %}active{% endif %}">
+          <i class="fas fa-chart-line"></i> Tracker
+        </a>
+        <a href="{% url 'finder' %}" class="{% if request.resolver_match.url_name == 'finder' %}active{% endif %}">
+          <i class="fas fa-map-marker-alt"></i> Finder
+        </a>
+      </div>
+      <div>
+        {% if request.user.is_authenticated %}
+          <span style="margin-left: 4px;"><i class="fas fa-user-circle"></i> {{ request.user.username }}</span><br>
+          <a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        {% else %}
+          <a href="{% url 'login' %}"><i class="fas fa-sign-in-alt"></i> Login</a>
+          <a href="{% url 'signup' %}"><i class="fas fa-user-plus"></i> Signup</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="main">
+      <!-- This container will be replaced -->
+      <div class="video-container">
+        <video id="video" autoplay></video>
+        <button id="capture-btn">Click Picture</button>
+      </div>
+      <!-- Prediction result area -->
+      <div id="prediction-result" style="margin-top: 20px; font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 18px; color: #2e7d32;"></div>
+    </div>
+  </div>
+
+  <script>
+    const main = document.querySelector(".main");
+    let stream = null;
+
+    // Save state to localStorage
+    function saveState(imageUrl, predictionText, predictionColor) {
+      const state = {
+        hasImage: true,
+        imageUrl: imageUrl,
+        predictionText: predictionText,
+        predictionColor: predictionColor
+      };
+      localStorage.setItem('identifierState', JSON.stringify(state));
+    }
+
+    // Load state from localStorage
+    function loadState() {
+      const savedState = localStorage.getItem('identifierState');
+      return savedState ? JSON.parse(savedState) : null;
+    }
+
+    // Clear saved state
+    function clearState() {
+      localStorage.removeItem('identifierState');
+    }
+
+    function setupWebcamView() {
+      main.innerHTML = '';
+
+      const container = document.createElement('div');
+      container.className = 'video-container';
+
+      const videoEl = document.createElement('video');
+      videoEl.id = 'video';
+      videoEl.autoplay = true;
+      videoEl.style.borderRadius = '12px';
+      videoEl.style.border = '2px solid #4caf50';
+      videoEl.style.maxWidth = '100%';
+
+      const btn = document.createElement('button');
+      btn.id = 'capture-btn';
+      btn.textContent = 'Click Picture';
+      btn.style.marginTop = '12px';
+      btn.style.padding = '10px 20px';
+      btn.style.fontSize = '16px';
+      btn.style.backgroundColor = '#4caf50';
+      btn.style.color = 'white';
+      btn.style.border = 'none';
+      btn.style.borderRadius = '8px';
+      btn.style.cursor = 'pointer';
+
+      container.appendChild(videoEl);
+      container.appendChild(btn);
+      main.appendChild(container);
+
+      // Prediction result container
+      const predDiv = document.createElement('div');
+      predDiv.id = 'prediction-result';
+      predDiv.style.marginTop = '20px';
+      predDiv.style.fontFamily = "'Outfit', sans-serif";
+      predDiv.style.fontWeight = '600';
+      predDiv.style.fontSize = '18px';
+      predDiv.style.color = '#2e7d32';
+      main.appendChild(predDiv);
+
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(mediaStream => {
+          stream = mediaStream;
+          videoEl.srcObject = stream;
+        })
+        .catch(err => {
+          console.error("Webcam access error:", err);
+          alert("Unable to access webcam.");
+        });
+
+      btn.addEventListener('click', () => {
+        videoEl.pause();
+        const canvas = document.createElement('canvas');
+        canvas.width = 224;   // match model input size for better quality
+        canvas.height = 224;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+
+        // Show captured image
+        const imgURL = canvas.toDataURL('image/png');
+        showCapturedImage(imgURL);
+      });
+    }
+
+    function showCapturedImage(imgURL, predictionText = '', predictionColor = '#2e7d32') {
+      const img = document.createElement('img');
+      img.src = imgURL;
+      img.style.maxWidth = '100%';
+      img.style.borderRadius = '12px';
+      img.style.border = '2px solid #4caf50';
+      img.style.marginBottom = '16px';
+      img.style.height = "180px";
+      img.style.width = "240px";
+
+      // Clear main and add image + buttons + prediction div
+      main.innerHTML = '';
+      main.appendChild(img);
+
+      // Create button container for side-by-side layout
+      const buttonContainer = document.createElement('div');
+      buttonContainer.style.display = 'flex';
+      buttonContainer.style.gap = '12px';
+      buttonContainer.style.marginTop = '12px';
+      buttonContainer.style.justifyContent = 'center';
+
+      // Cancel button (red, on the left)
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.padding = '10px 20px';
+      cancelBtn.style.fontSize = '16px';
+      cancelBtn.style.backgroundColor = '#f44336';
+      cancelBtn.style.color = 'white';
+      cancelBtn.style.border = 'none';
+      cancelBtn.style.borderRadius = '8px';
+      cancelBtn.style.cursor = 'pointer';
+
+      cancelBtn.addEventListener('click', () => {
+        clearState(); // Clear saved state when cancel is clicked
+        setupWebcamView();
+      });
+
+      // Dispose/Reuse button (green, on the right)
+      const resetBtn = document.createElement('button');
+      resetBtn.textContent = 'Dispose / Reuse';
+      resetBtn.style.padding = '10px 20px';
+      resetBtn.style.fontSize = '16px';
+      resetBtn.style.backgroundColor = '#4caf50';
+      resetBtn.style.color = 'white';
+      resetBtn.style.border = 'none';
+      resetBtn.style.borderRadius = '8px';
+      resetBtn.style.cursor = 'pointer';
+
+      resetBtn.addEventListener('click', () => {
+        // Check if user is authenticated (you can pass this from Django template)
+        const isAuthenticated = {% if request.user.is_authenticated %}true{% else %}false{% endif %};
+        
+        if (isAuthenticated) {
+          // Disable button to prevent multiple clicks
+          resetBtn.disabled = true;
+          resetBtn.textContent = 'Processing...';
+          resetBtn.style.backgroundColor = '#cccccc';
+          
+          // Send request to update tracker
+          fetch("{% url 'update_tracker' %}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({
+              'action': 'dispose_reuse'
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              console.log('Tracker updated successfully');
+              // Clear state and return to webcam
+              clearState();
+              setupWebcamView();
+            } else {
+              console.error('Error updating tracker:', data.error);
+              // Re-enable button on error
+              resetBtn.disabled = false;
+              resetBtn.textContent = 'Dispose / Reuse';
+              resetBtn.style.backgroundColor = '#4caf50';
+              alert('Error updating tracker. Please try again.');
+            }
+          })
+          .catch(err => {
+            console.error('Network error:', err);
+            // Re-enable button on error
+            resetBtn.disabled = false;
+            resetBtn.textContent = 'Dispose / Reuse';
+            resetBtn.style.backgroundColor = '#4caf50';
+            alert('Network error. Please try again.');
+          });
+        } else {
+          // User not logged in, just clear state and return to webcam
+          clearState();
+          setupWebcamView();
+        }
+      });
+
+      // Add buttons to container in order (Cancel on left, Dispose/Reuse on right)
+      buttonContainer.appendChild(cancelBtn);
+      buttonContainer.appendChild(resetBtn);
+
+      // Also add prediction result div
+      const predResult = document.createElement('div');
+      predResult.id = 'prediction-result';
+      predResult.style.marginTop = '0px';
+      predResult.style.fontFamily = "'Outfit', sans-serif";
+      predResult.style.fontWeight = '600';
+      predResult.style.fontSize = '36px';
+      predResult.style.color = predictionColor;
+      predResult.textContent = predictionText;
+      main.appendChild(predResult);
+      main.appendChild(buttonContainer);
+
+      // If this is a fresh capture (no prediction text yet), get prediction
+      if (!predictionText) {
+        // Prepare form data to send to backend
+        function base64ToBlob(base64) {
+          const parts = base64.split(';base64,');
+          const contentType = parts[0].split(':')[1];
+          const raw = window.atob(parts[1]);
+          const rawLength = raw.length;
+          const uInt8Array = new Uint8Array(rawLength);
+
+          for (let i = 0; i < rawLength; ++i) {
+            uInt8Array[i] = raw.charCodeAt(i);
+          }
+
+          return new Blob([uInt8Array], { type: contentType });
+        }
+
+        const blob = base64ToBlob(imgURL);
+        const formData = new FormData();
+        formData.append('image', blob, 'capture.png');
+
+        // Send image to Django prediction API
+        fetch("{% url 'identify_predict' %}", {
+          method: 'POST',
+          body: formData,
+          headers: {
+            // No need for CSRF token here due to @csrf_exempt on backend
+          },
+        })
+          .then(response => response.json())
+          .then(data => {
+            let finalText, finalColor;
+            if(data.error){
+              finalText = 'Error: ' + data.error;
+              finalColor = 'red';
+            } else {
+              finalText = `${data.class}`;
+              finalColor = '#2e7d32';
+            }
+            predResult.textContent = finalText;
+            predResult.style.color = finalColor;
+            
+            // Save the state after getting prediction
+            saveState(imgURL, finalText, finalColor);
+          })
+          .catch(err => {
+            const errorText = 'Error contacting prediction server.';
+            const errorColor = 'red';
+            predResult.textContent = errorText;
+            predResult.style.color = errorColor;
+            console.error(err);
+            
+            // Save the error state too
+            saveState(imgURL, errorText, errorColor);
+          });
+      }
+    }
+
+    // Clear state when auth-related buttons are clicked
+    function setupAuthButtonListeners() {
+      const authButtons = document.querySelectorAll('a[href*="logout"]');
+      authButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          clearState(); // Clear the identifier state before navigation
+        });
+      });
+    }
+
+    // Initialize page - check for saved state first
+    const savedState = loadState();
+    if (savedState && savedState.hasImage) {
+      // Restore the captured image view
+      showCapturedImage(savedState.imageUrl, savedState.predictionText, savedState.predictionColor);
+    } else {
+      // No saved state, show webcam
+      setupWebcamView();
+    }
+
+    // Set up listeners for auth buttons
+    setupAuthButtonListeners();
+  </script>
+</body>
+</html>

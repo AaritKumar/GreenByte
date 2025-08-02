@@ -1,0 +1,56 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login - Greenbyte</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <header>
+    <h1><i class="fas fa-leaf"></i> Greenbyte</h1>
+    <span>Electronic Waste Identifier</span>
+  </header>
+
+  <div class="container" style="justify-content: center; align-items: center;">
+    <div class="modal" style="display: flex;">
+      <div class="modal-content">
+        <h3>Login</h3>
+        <form method="post" action="{% url 'login' %}">
+          {% csrf_token %}
+
+          <label for="{{ form.username.id_for_label }}">Username:</label>
+          <input type="text"
+                 name="{{ form.username.name }}"
+                 id="{{ form.username.id_for_label }}"
+                 value="{{ form.username.value|default_if_none:'' }}"
+                 class="modal-input"
+                 required>
+          {% for error in form.username.errors %}
+            <p style="color: red; font-size: 13px; margin: 4px 0;">{{ error }}</p>
+          {% endfor %}
+
+          <label for="{{ form.password.id_for_label }}">Password:</label>
+          <input type="password"
+                 name="{{ form.password.name }}"
+                 id="{{ form.password.id_for_label }}"
+                 class="modal-input"
+                 required>
+          {% for error in form.password.errors %}
+            <p style="color: red; font-size: 13px; margin: 4px 0;">{{ error }}</p>
+          {% endfor %}
+
+          <button type="submit">Login</button>
+        </form>
+
+        <p style="text-align: center; margin-top: 16px;">
+          Don't have an account? <a href="{% url 'signup' %}">Sign up</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
