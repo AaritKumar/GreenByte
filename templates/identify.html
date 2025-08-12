@@ -8,6 +8,95 @@
   <link rel="stylesheet" href="{% static 'css/styles.css' %}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    .info-container {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+    
+    .info-section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 15px 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-left: 4px solid #4caf50;
+    }
+    
+    .info-section h3 {
+      color: #2e7d32;
+      margin: 0 0 15px 0;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .info-section p, .info-section li {
+      line-height: 1.6;
+      color: #444;
+      margin: 8px 0;
+    }
+    
+    .info-section ul {
+      padding-left: 20px;
+    }
+    
+    .device-name {
+      font-size: 32px;
+      color: #2e7d32;
+      text-align: center;
+      margin: 15px 0;
+      font-weight: 700;
+    }
+    
+    .disposal-section {
+      border-left-color: #ff9800;
+    }
+    
+    .reuse-section {
+      border-left-color: #2196f3;
+    }
+    
+    .loading {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+    }
+    
+    .preserved-session {
+      background: #e8f5e8;
+      border: 1px solid #4caf50;
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin: 10px auto 20px auto;
+      max-width: 400px;
+      text-align: center;
+      color: #2e7d32;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .preserved-session {
+      background: #e8f5e8;
+      border: 1px solid #4caf50;
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin: 10px auto 20px auto;
+      max-width: 400px;
+      text-align: center;
+      color: #2e7d32;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -45,8 +134,6 @@
         <video id="video" autoplay></video>
         <button id="capture-btn">Click Picture</button>
       </div>
-      <!-- Prediction result area -->
-      <div id="prediction-result" style="margin-top: 20px; font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 18px; color: #2e7d32;"></div>
     </div>
   </div>
 
@@ -55,24 +142,44 @@
     let stream = null;
 
     // Save state to localStorage
-    function saveState(imageUrl, predictionText, predictionColor) {
+    function saveState(imageUrl, deviceName, disposalInfo, reuseIdeas, fullResponse) {
       const state = {
         hasImage: true,
         imageUrl: imageUrl,
-        predictionText: predictionText,
-        predictionColor: predictionColor
+        deviceName: deviceName || '',
+        disposalInfo: disposalInfo || '',
+        reuseIdeas: reuseIdeas || '',
+        fullResponse: fullResponse || '',
+        timestamp: new Date().getTime() // Add timestamp for debugging
       };
-      localStorage.setItem('identifierState', JSON.stringify(state));
+      try {
+        localStorage.setItem('identifierState', JSON.stringify(state));
+        console.log('State saved successfully:', state); // Debug log
+      } catch (error) {
+        console.error('Error saving state:', error);
+      }
     }
 
     // Load state from localStorage
     function loadState() {
-      const savedState = localStorage.getItem('identifierState');
-      return savedState ? JSON.parse(savedState) : null;
+      try {
+        const savedState = localStorage.getItem('identifierState');
+        if (savedState) {
+          const parsed = JSON.parse(savedState);
+          console.log('State loaded successfully:', parsed); // Debug log
+          return parsed;
+        }
+      } catch (error) {
+        console.error('Error loading state:', error);
+        // Clear corrupted state
+        localStorage.removeItem('identifierState');
+      }
+      return null;
     }
 
     // Clear saved state
     function clearState() {
+      console.log('Clearing state'); // Debug log
       localStorage.removeItem('identifierState');
     }
 
@@ -105,16 +212,6 @@
       container.appendChild(btn);
       main.appendChild(container);
 
-      // Prediction result container
-      const predDiv = document.createElement('div');
-      predDiv.id = 'prediction-result';
-      predDiv.style.marginTop = '20px';
-      predDiv.style.fontFamily = "'Outfit', sans-serif";
-      predDiv.style.fontWeight = '600';
-      predDiv.style.fontSize = '18px';
-      predDiv.style.color = '#2e7d32';
-      main.appendChild(predDiv);
-
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(mediaStream => {
           stream = mediaStream;
@@ -128,7 +225,7 @@
       btn.addEventListener('click', () => {
         videoEl.pause();
         const canvas = document.createElement('canvas');
-        canvas.width = 224;   // match model input size for better quality
+        canvas.width = 224;
         canvas.height = 224;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
@@ -137,36 +234,110 @@
           stream.getTracks().forEach(track => track.stop());
         }
 
-        // Show captured image
         const imgURL = canvas.toDataURL('image/png');
+        
+        // Save the image immediately after capture (before API call)
+        saveState(imgURL, '', '', '', '');
+        
         showCapturedImage(imgURL);
       });
     }
 
-    function showCapturedImage(imgURL, predictionText = '', predictionColor = '#2e7d32') {
+    function showCapturedImage(imgURL, deviceName = '', disposalInfo = '', reuseIdeas = '', fullResponse = '', showPreservedMessage = false) {
+      main.innerHTML = '';
+
+      // Show preserved session message if returning from navigation
+      if (showPreservedMessage && deviceName) {
+        const preservedMsg = document.createElement('div');
+        preservedMsg.className = 'preserved-session';
+        preservedMsg.innerHTML = '<i class="fas fa-check-circle"></i> Your captured image has been preserved';
+        main.appendChild(preservedMsg);
+      }
+
+      // Image
       const img = document.createElement('img');
       img.src = imgURL;
-      img.style.maxWidth = '100%';
+      img.style.maxWidth = '300px';
       img.style.borderRadius = '12px';
       img.style.border = '2px solid #4caf50';
       img.style.marginBottom = '16px';
-      img.style.height = "180px";
-      img.style.width = "240px";
+      img.style.display = 'block';
+      img.style.marginLeft = 'auto';
+      img.style.marginRight = 'auto';
 
-      // Clear main and add image + buttons + prediction div
-      main.innerHTML = '';
       main.appendChild(img);
 
-      // Create button container for side-by-side layout
+      // Create info container
+      const infoContainer = document.createElement('div');
+      infoContainer.className = 'info-container';
+
+      if (deviceName) {
+        // Device name
+        const deviceNameEl = document.createElement('div');
+        deviceNameEl.className = 'device-name';
+        deviceNameEl.textContent = deviceName;
+        infoContainer.appendChild(deviceNameEl);
+
+        // Disposal info
+        if (disposalInfo) {
+          const disposalSection = document.createElement('div');
+          disposalSection.className = 'info-section disposal-section';
+          
+          const disposalTitle = document.createElement('h3');
+          disposalTitle.innerHTML = '<i class="fas fa-recycle"></i> How to Dispose Properly';
+          disposalSection.appendChild(disposalTitle);
+
+          const disposalContent = document.createElement('div');
+          disposalContent.innerHTML = disposalInfo.split('\n').map(line => 
+            line.trim() ? `<p>${line.replace(/^[•\-\*]\s*/, '')}</p>` : ''
+          ).join('');
+          disposalSection.appendChild(disposalContent);
+
+          infoContainer.appendChild(disposalSection);
+        }
+
+        // Reuse ideas
+        if (reuseIdeas) {
+          const reuseSection = document.createElement('div');
+          reuseSection.className = 'info-section reuse-section';
+          
+          const reuseTitle = document.createElement('h3');
+          reuseTitle.innerHTML = '<i class="fas fa-lightbulb"></i> Creative Reuse Ideas';
+          reuseSection.appendChild(reuseTitle);
+
+          const reuseList = document.createElement('ol');
+          reuseIdeas.split('\n').forEach(line => {
+            line = line.trim();
+            if (line && line.match(/^\d+\./)) {
+              const li = document.createElement('li');
+              li.textContent = line.replace(/^\d+\.\s*/, '');
+              reuseList.appendChild(li);
+            }
+          });
+          reuseSection.appendChild(reuseList);
+
+          infoContainer.appendChild(reuseSection);
+        }
+      } else {
+        // Show loading state
+        const loadingEl = document.createElement('div');
+        loadingEl.className = 'loading device-name';
+        loadingEl.textContent = 'Analyzing device...';
+        infoContainer.appendChild(loadingEl);
+      }
+
+      main.appendChild(infoContainer);
+
+      // Button container
       const buttonContainer = document.createElement('div');
       buttonContainer.style.display = 'flex';
       buttonContainer.style.gap = '12px';
-      buttonContainer.style.marginTop = '12px';
+      buttonContainer.style.marginTop = '20px';
       buttonContainer.style.justifyContent = 'center';
 
-      // Cancel button (red, on the left)
+      // Cancel button - explicitly clear state
       const cancelBtn = document.createElement('button');
-      cancelBtn.textContent = 'Cancel';
+      cancelBtn.textContent = 'Take Another Photo';
       cancelBtn.style.padding = '10px 20px';
       cancelBtn.style.fontSize = '16px';
       cancelBtn.style.backgroundColor = '#f44336';
@@ -176,13 +347,13 @@
       cancelBtn.style.cursor = 'pointer';
 
       cancelBtn.addEventListener('click', () => {
-        clearState(); // Clear saved state when cancel is clicked
+        clearState(); // Explicit clear on cancel
         setupWebcamView();
       });
 
-      // Dispose/Reuse button (green, on the right)
+      // Dispose/Reuse button
       const resetBtn = document.createElement('button');
-      resetBtn.textContent = 'Dispose / Reuse';
+      resetBtn.textContent = 'Mark as Handled';
       resetBtn.style.padding = '10px 20px';
       resetBtn.style.fontSize = '16px';
       resetBtn.style.backgroundColor = '#4caf50';
@@ -192,76 +363,51 @@
       resetBtn.style.cursor = 'pointer';
 
       resetBtn.addEventListener('click', () => {
-        // Check if user is authenticated (you can pass this from Django template)
         const isAuthenticated = {% if request.user.is_authenticated %}true{% else %}false{% endif %};
         
         if (isAuthenticated) {
-          // Disable button to prevent multiple clicks
           resetBtn.disabled = true;
           resetBtn.textContent = 'Processing...';
           resetBtn.style.backgroundColor = '#cccccc';
           
-          // Send request to update tracker
           fetch("{% url 'update_tracker' %}", {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'X-CSRFToken': '{{ csrf_token }}',
             },
-            body: JSON.stringify({
-              'action': 'dispose_reuse'
-            })
+            body: JSON.stringify({'action': 'dispose_reuse'})
           })
           .then(response => response.json())
           .then(data => {
             if (data.success) {
-              console.log('Tracker updated successfully');
-              // Clear state and return to webcam
-              clearState();
+              clearState(); // Explicit clear on successful handling
               setupWebcamView();
             } else {
-              console.error('Error updating tracker:', data.error);
-              // Re-enable button on error
               resetBtn.disabled = false;
-              resetBtn.textContent = 'Dispose / Reuse';
+              resetBtn.textContent = 'Mark as Handled';
               resetBtn.style.backgroundColor = '#4caf50';
               alert('Error updating tracker. Please try again.');
             }
           })
           .catch(err => {
-            console.error('Network error:', err);
-            // Re-enable button on error
             resetBtn.disabled = false;
-            resetBtn.textContent = 'Dispose / Reuse';
+            resetBtn.textContent = 'Mark as Handled';
             resetBtn.style.backgroundColor = '#4caf50';
             alert('Network error. Please try again.');
           });
         } else {
-          // User not logged in, just clear state and return to webcam
-          clearState();
+          clearState(); // Explicit clear for non-authenticated users
           setupWebcamView();
         }
       });
 
-      // Add buttons to container in order (Cancel on left, Dispose/Reuse on right)
       buttonContainer.appendChild(cancelBtn);
       buttonContainer.appendChild(resetBtn);
-
-      // Also add prediction result div
-      const predResult = document.createElement('div');
-      predResult.id = 'prediction-result';
-      predResult.style.marginTop = '0px';
-      predResult.style.fontFamily = "'Outfit', sans-serif";
-      predResult.style.fontWeight = '600';
-      predResult.style.fontSize = '36px';
-      predResult.style.color = predictionColor;
-      predResult.textContent = predictionText;
-      main.appendChild(predResult);
       main.appendChild(buttonContainer);
 
-      // If this is a fresh capture (no prediction text yet), get prediction
-      if (!predictionText) {
-        // Prepare form data to send to backend
+      // If this is a fresh capture, get prediction
+      if (!deviceName) {
         function base64ToBlob(base64) {
           const parts = base64.split(';base64,');
           const contentType = parts[0].split(':')[1];
@@ -280,65 +426,79 @@
         const formData = new FormData();
         formData.append('image', blob, 'capture.png');
 
-        // Send image to Django prediction API
         fetch("{% url 'identify_predict' %}", {
           method: 'POST',
           body: formData,
-          headers: {
-            // No need for CSRF token here due to @csrf_exempt on backend
-          },
         })
-          .then(response => response.json())
-          .then(data => {
-            let finalText, finalColor;
-            if(data.error){
-              finalText = 'Error: ' + data.error;
-              finalColor = 'red';
-            } else {
-              finalText = `${data.class}`;
-              finalColor = '#2e7d32';
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            const loadingEl = document.querySelector('.loading');
+            if (loadingEl) {
+              loadingEl.textContent = 'Error: ' + data.error;
+              loadingEl.style.color = 'red';
             }
-            predResult.textContent = finalText;
-            predResult.style.color = finalColor;
-            
-            // Save the state after getting prediction
-            saveState(imgURL, finalText, finalColor);
-          })
-          .catch(err => {
-            const errorText = 'Error contacting prediction server.';
-            const errorColor = 'red';
-            predResult.textContent = errorText;
-            predResult.style.color = errorColor;
-            console.error(err);
-            
-            // Save the error state too
-            saveState(imgURL, errorText, errorColor);
-          });
+          } else {
+            // Save the state and refresh the display
+            saveState(imgURL, data.class, data.disposal_info, data.reuse_ideas, data.full_response);
+            showCapturedImage(imgURL, data.class, data.disposal_info, data.reuse_ideas, data.full_response, false);
+          }
+        })
+        .catch(err => {
+          const loadingEl = document.querySelector('.loading');
+          if (loadingEl) {
+            loadingEl.textContent = 'Error contacting prediction server.';
+            loadingEl.style.color = 'red';
+          }
+          console.error(err);
+        });
       }
     }
 
-    // Clear state when auth-related buttons are clicked
-    function setupAuthButtonListeners() {
-      const authButtons = document.querySelectorAll('a[href*="logout"]');
-      authButtons.forEach(button => {
+    // Clear state only when specific actions are taken
+    function setupClearStateListeners() {
+      // Clear state only on logout
+      const logoutButtons = document.querySelectorAll('a[href*="logout"]');
+      logoutButtons.forEach(button => {
         button.addEventListener('click', () => {
-          clearState(); // Clear the identifier state before navigation
+          clearState();
         });
       });
     }
 
-    // Initialize page - check for saved state first
+    // Override default navigation behavior to preserve state
+    function setupNavigationListeners() {
+      const navLinks = document.querySelectorAll('.sidebar a:not([href*="logout"])');
+      navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          // Don't clear state on navigation - let the user return to their captured image
+          // State will only be cleared by explicit user actions (cancel, mark as handled, logout)
+        });
+      });
+    }
+
+    // Initialize page
     const savedState = loadState();
     if (savedState && savedState.hasImage) {
-      // Restore the captured image view
-      showCapturedImage(savedState.imageUrl, savedState.predictionText, savedState.predictionColor);
+      // Check if we're returning from navigation by seeing if we're on the identify page
+      // but have saved state (indicates user navigated away and came back)
+      const isReturning = window.location.pathname === '/' || window.location.pathname.includes('identify');
+      
+      showCapturedImage(
+        savedState.imageUrl, 
+        savedState.deviceName, 
+        savedState.disposalInfo, 
+        savedState.reuseIdeas, 
+        savedState.fullResponse,
+        isReturning && savedState.deviceName // Show preserved message if returning with completed analysis
+      );
     } else {
-      // No saved state, show webcam
       setupWebcamView();
     }
 
-    // Set up listeners for auth buttons
-    setupAuthButtonListeners();
+    // Set up event listeners
+    setupClearStateListeners();
+    setupNavigationListeners();
   </script>
 </body>
 </html>
