@@ -15,6 +15,7 @@ class UserTracker(models.Model):
         verbose_name_plural = "User Trackers"
 
 class DeviceTracker(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     device_name = models.CharField(max_length=255)
     device_co2 = models.IntegerField(default=0)
     device_kwh = models.IntegerField(default=0)

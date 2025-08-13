@@ -8,6 +8,12 @@
   <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    .center-align-container {
+        text-align: center;
+        width: 100%;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -41,6 +47,7 @@
 
     <div class="main">
       {% if request.user.is_authenticated %}
+      <div class="center-align-container">
         <h2>{{ request.user.username }}'s E-Waste Footprint Tracker</h2>
         {% if tracker %}
           <div class="tracker-stats">
@@ -58,6 +65,21 @@
             <p><strong>Total Energy Saved:</strong> 0 kWh</p>
           </div>
         {% endif %}
+
+        {% if devices %}
+        <br><br>
+        <h3>Tracked Devices</h3>
+        {% for device in devices %}
+          <div class="tracker-stats" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+              <p><strong>Device Name:</strong> {{ device.device_name }}</p>
+              <br>
+              <p><strong>CO2 Saved:</strong> {{ device.device_co2 }} kg</p>
+              <br>
+              <p><strong>Energy Saved:</strong> {{ device.device_kwh }} kWh</p>
+          </div>
+        {% endfor %}
+        {% endif %}
+      </div>
       {% else %}
         <h2>E-Waste Footprint Tracker</h2>
         <p>Login to track your electronic waste footprint.</p>

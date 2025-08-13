@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from PIL import Image
 import base64
 import io
-from .models import UserTracker
+from .models import UserTracker, DeviceTracker
 import json
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
@@ -161,7 +161,9 @@ If you cannot clearly identify the device, provide your best assessment and gene
                 'class': device_name,
                 'full_response': full_response,
                 'disposal_info': disposal_info,
-                'reuse_ideas': reuse_ideas
+                'reuse_ideas': reuse_ideas,
+                'device_co2': device_co2,
+                'device_kwh': device_kwh
             })
             
         except anthropic.BadRequestError as e:
@@ -178,12 +180,14 @@ If you cannot clearly identify the device, provide your best assessment and gene
 def tracker_view(request):
     # Initialize tracker data
     tracker_data = None
+    devices = None
     
     # If user is authenticated, get their tracker data
     if request.user.is_authenticated:
         try:
             # Get the user's tracker
             tracker_data = UserTracker.objects.get(user_id=request.user)
+            devices = DeviceTracker.objects.filter(user=request.user)
         except UserTracker.DoesNotExist:
             # Create a tracker if it doesn't exist
             tracker_data = UserTracker.objects.create(
@@ -195,7 +199,8 @@ def tracker_view(request):
     
     # Pass the tracker data to the template
     context = {
-        'tracker': tracker_data
+        'tracker': tracker_data,
+        'devices': devices
     }
     return render(request, "tracker.html", context=context)
 
@@ -237,6 +242,10 @@ def update_tracker(request):
         action = data.get('action')
         
         if action == 'dispose_reuse':
+            device_name = data.get('device_name')
+            device_co2 = data.get('device_co2', 0)
+            device_kwh = data.get('device_kwh', 0)
+
             # Get or create user's tracker
             tracker, created = UserTracker.objects.get_or_create(
                 user_id=request.user,
@@ -249,7 +258,17 @@ def update_tracker(request):
             
             # Increment total_devices by 1
             tracker.total_devices += 1
+            tracker.total_co2 += device_co2
+            tracker.total_kwh += device_kwh
             tracker.save()
+
+            # Create a new DeviceTracker entry
+            DeviceTracker.objects.create(
+                user=request.user,
+                device_name=device_name,
+                device_co2=device_co2,
+                device_kwh=device_kwh
+            )
             
             return JsonResponse({
                 'success': True,
