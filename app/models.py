@@ -13,3 +13,11 @@ class UserTracker(models.Model):
     class Meta:
         verbose_name = "User Tracker"
         verbose_name_plural = "User Trackers"
+
+class DeviceTracker(models.Model):
+    device_name = models.CharField(max_length=255)
+    device_co2 = models.IntegerField(default=0)
+    device_kwh = models.IntegerField(default=0)
+
+    def __str__(self):
+        return self.device_name

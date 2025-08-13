@@ -59,6 +59,8 @@ def identify_predict(request):
 Please format your response EXACTLY as follows:
 
 DEVICE: [Name of the electronic device/component]
+DEVICE_CO2: [Estimated CO2 emissions for manufacturing this device in kg, as an integer]
+DEVICE_KWH: [Estimated kWh of electricity consumed by this device annually, as an integer]
 
 DISPOSAL:
 [Provide 3-5 bullet points on how to properly dispose of this device, including:
@@ -77,7 +79,7 @@ REUSE IDEAS:
 
 Focus on practical, safe, and creative ways to repurpose the device or its components. Consider both functional reuses and artistic/decorative purposes. If the device is still functional, prioritize extending its useful life. If it's broken, think about how individual components could be repurposed.
 
-If you cannot clearly identify the device, provide your best assessment and general e-waste guidance."""
+If you cannot clearly identify the device, provide your best assessment and general e-waste guidance, and set CO2 and KWH to 0."""
                             }
                         ]
                     }
@@ -89,6 +91,8 @@ If you cannot clearly identify the device, provide your best assessment and gene
             
             # Parse the structured response
             device_name = "Unknown Device"
+            device_co2 = 0
+            device_kwh = 0
             disposal_info = ""
             reuse_ideas = ""
             
@@ -103,6 +107,18 @@ If you cannot clearly identify the device, provide your best assessment and gene
                     line = line.strip()
                     if line.startswith('DEVICE:'):
                         device_name = line.replace('DEVICE:', '').strip()
+                    elif line.startswith('DEVICE_CO2:'):
+                        try:
+                            device_co2_str = line.replace('DEVICE_CO2:', '').strip().split(' ')[0]
+                            device_co2 = int(device_co2_str)
+                        except (ValueError, TypeError):
+                            device_co2 = 0
+                    elif line.startswith('DEVICE_KWH:'):
+                        try:
+                            device_kwh_str = line.replace('DEVICE_KWH:', '').strip().split(' ')[0]
+                            device_kwh = int(device_kwh_str)
+                        except (ValueError, TypeError):
+                            device_kwh = 0
                     elif line.startswith('DISPOSAL:'):
                         current_section = 'disposal'
                     elif line.startswith('REUSE IDEAS:'):
