@@ -142,7 +142,7 @@
     let stream = null;
 
     // Save state to localStorage
-    function saveState(imageUrl, deviceName, disposalInfo, reuseIdeas, fullResponse) {
+    function saveState(imageUrl, deviceName, disposalInfo, reuseIdeas, fullResponse, deviceCo2, deviceKwh) {
       const state = {
         hasImage: true,
         imageUrl: imageUrl,
@@ -150,6 +150,8 @@
         disposalInfo: disposalInfo || '',
         reuseIdeas: reuseIdeas || '',
         fullResponse: fullResponse || '',
+        deviceCo2: deviceCo2 || 0,
+        deviceKwh: deviceKwh || 0,
         timestamp: new Date().getTime() // Add timestamp for debugging
       };
       try {
@@ -237,13 +239,13 @@
         const imgURL = canvas.toDataURL('image/png');
         
         // Save the image immediately after capture (before API call)
-        saveState(imgURL, '', '', '', '');
+        saveState(imgURL, '', '', '', '', 0, 0);
         
         showCapturedImage(imgURL);
       });
     }
 
-    function showCapturedImage(imgURL, deviceName = '', disposalInfo = '', reuseIdeas = '', fullResponse = '', showPreservedMessage = false) {
+    function showCapturedImage(imgURL, deviceName = '', disposalInfo = '', reuseIdeas = '', fullResponse = '', showPreservedMessage = false, deviceCo2 = 0, deviceKwh = 0) {
       main.innerHTML = '';
 
       // Show preserved session message if returning from navigation
@@ -370,13 +372,20 @@
           resetBtn.textContent = 'Processing...';
           resetBtn.style.backgroundColor = '#cccccc';
           
+          const currentState = loadState();
+
           fetch("{% url 'update_tracker' %}", {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'X-CSRFToken': '{{ csrf_token }}',
             },
-            body: JSON.stringify({'action': 'dispose_reuse'})
+            body: JSON.stringify({
+              'action': 'dispose_reuse',
+              'device_name': currentState.deviceName,
+              'device_co2': currentState.deviceCo2,
+              'device_kwh': currentState.deviceKwh
+            })
           })
           .then(response => response.json())
           .then(data => {
@@ -440,8 +449,8 @@
             }
           } else {
             // Save the state and refresh the display
-            saveState(imgURL, data.class, data.disposal_info, data.reuse_ideas, data.full_response);
-            showCapturedImage(imgURL, data.class, data.disposal_info, data.reuse_ideas, data.full_response, false);
+            saveState(imgURL, data.class, data.disposal_info, data.reuse_ideas, data.full_response, data.device_co2, data.device_kwh);
+            showCapturedImage(imgURL, data.class, data.disposal_info, data.reuse_ideas, data.full_response, false, data.device_co2, data.device_kwh);
           }
         })
         .catch(err => {
@@ -490,7 +499,9 @@
         savedState.disposalInfo, 
         savedState.reuseIdeas, 
         savedState.fullResponse,
-        isReturning && savedState.deviceName // Show preserved message if returning with completed analysis
+        isReturning && savedState.deviceName, // Show preserved message if returning with completed analysis
+        savedState.deviceCo2,
+        savedState.deviceKwh
       );
     } else {
       setupWebcamView();

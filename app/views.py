@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from PIL import Image
 import base64
 import io
-from .models import UserTracker
+from .models import UserTracker, DeviceTracker
 import json
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
@@ -59,6 +59,8 @@ def identify_predict(request):
 Please format your response EXACTLY as follows:
 
 DEVICE: [Name of the electronic device/component]
+DEVICE_CO2: [Estimated CO2 emissions for manufacturing this device in kg, as an integer]
+DEVICE_KWH: [Estimated kWh of electricity consumed by this device annually, as an integer]
 
 DISPOSAL:
 [Provide 3-5 bullet points on how to properly dispose of this device, including:
@@ -77,7 +79,7 @@ REUSE IDEAS:
 
 Focus on practical, safe, and creative ways to repurpose the device or its components. Consider both functional reuses and artistic/decorative purposes. If the device is still functional, prioritize extending its useful life. If it's broken, think about how individual components could be repurposed.
 
-If you cannot clearly identify the device, provide your best assessment and general e-waste guidance."""
+If you cannot clearly identify the device, provide your best assessment and general e-waste guidance, and set CO2 and KWH to 0."""
                             }
                         ]
                     }
@@ -89,6 +91,8 @@ If you cannot clearly identify the device, provide your best assessment and gene
             
             # Parse the structured response
             device_name = "Unknown Device"
+            device_co2 = 0
+            device_kwh = 0
             disposal_info = ""
             reuse_ideas = ""
             
@@ -103,6 +107,18 @@ If you cannot clearly identify the device, provide your best assessment and gene
                     line = line.strip()
                     if line.startswith('DEVICE:'):
                         device_name = line.replace('DEVICE:', '').strip()
+                    elif line.startswith('DEVICE_CO2:'):
+                        try:
+                            device_co2_str = line.replace('DEVICE_CO2:', '').strip().split(' ')[0]
+                            device_co2 = int(device_co2_str)
+                        except (ValueError, TypeError):
+                            device_co2 = 0
+                    elif line.startswith('DEVICE_KWH:'):
+                        try:
+                            device_kwh_str = line.replace('DEVICE_KWH:', '').strip().split(' ')[0]
+                            device_kwh = int(device_kwh_str)
+                        except (ValueError, TypeError):
+                            device_kwh = 0
                     elif line.startswith('DISPOSAL:'):
                         current_section = 'disposal'
                     elif line.startswith('REUSE IDEAS:'):
@@ -145,7 +161,9 @@ If you cannot clearly identify the device, provide your best assessment and gene
                 'class': device_name,
                 'full_response': full_response,
                 'disposal_info': disposal_info,
-                'reuse_ideas': reuse_ideas
+                'reuse_ideas': reuse_ideas,
+                'device_co2': device_co2,
+                'device_kwh': device_kwh
             })
             
         except anthropic.BadRequestError as e:
@@ -162,12 +180,14 @@ If you cannot clearly identify the device, provide your best assessment and gene
 def tracker_view(request):
     # Initialize tracker data
     tracker_data = None
+    devices = None
     
     # If user is authenticated, get their tracker data
     if request.user.is_authenticated:
         try:
             # Get the user's tracker
             tracker_data = UserTracker.objects.get(user_id=request.user)
+            devices = DeviceTracker.objects.filter(user=request.user)
         except UserTracker.DoesNotExist:
             # Create a tracker if it doesn't exist
             tracker_data = UserTracker.objects.create(
@@ -179,7 +199,8 @@ def tracker_view(request):
     
     # Pass the tracker data to the template
     context = {
-        'tracker': tracker_data
+        'tracker': tracker_data,
+        'devices': devices
     }
     return render(request, "tracker.html", context=context)
 
@@ -221,6 +242,10 @@ def update_tracker(request):
         action = data.get('action')
         
         if action == 'dispose_reuse':
+            device_name = data.get('device_name')
+            device_co2 = data.get('device_co2', 0)
+            device_kwh = data.get('device_kwh', 0)
+
             # Get or create user's tracker
             tracker, created = UserTracker.objects.get_or_create(
                 user_id=request.user,
@@ -233,7 +258,17 @@ def update_tracker(request):
             
             # Increment total_devices by 1
             tracker.total_devices += 1
+            tracker.total_co2 += device_co2
+            tracker.total_kwh += device_kwh
             tracker.save()
+
+            # Create a new DeviceTracker entry
+            DeviceTracker.objects.create(
+                user=request.user,
+                device_name=device_name,
+                device_co2=device_co2,
+                device_kwh=device_kwh
+            )
             
             return JsonResponse({
                 'success': True,
