@@ -71,11 +71,11 @@ DISPOSAL:
 - Environmental considerations]
 
 REUSE IDEAS:
-1. [Creative reuse idea #1]
-2. [Creative reuse idea #2]
-3. [Creative reuse idea #3]
-4. [Creative reuse idea #4]
-5. [Creative reuse idea #5]
+- [Creative reuse idea #1]
+- [Creative reuse idea #2]
+- [Creative reuse idea #3]
+- [Creative reuse idea #4]
+- [Creative reuse idea #5]
 
 Focus on practical, safe, and creative ways to repurpose the device or its components. Consider both functional reuses and artistic/decorative purposes. If the device is still functional, prioritize extending its useful life. If it's broken, think about how individual components could be repurposed.
 
