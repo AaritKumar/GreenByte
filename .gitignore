@@ -57,3 +57,13 @@ yarn-error.log*.env
 *.pyc
 __pycache__/
 db.sqlite3
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore SQLite database
+db.sqlite3
+__pycache__/
+*.pyc
+db.sqlite3
