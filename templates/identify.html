@@ -412,7 +412,9 @@
       });
 
       buttonContainer.appendChild(cancelBtn);
-      buttonContainer.appendChild(resetBtn);
+      if (deviceName !== 'No Device Detected') {
+        buttonContainer.appendChild(resetBtn);
+      }
       main.appendChild(buttonContainer);
 
       // If this is a fresh capture, get prediction

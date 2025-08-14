@@ -54,7 +54,7 @@ def identify_predict(request):
                             },
                             {
                                 "type": "text",
-                                "text": """Identify the electronic device or component in this image and provide comprehensive e-waste guidance.
+                                "text": """Identify the electronic device or component in this image and provide comprehensive e-waste guidance. It is crucial that you only identify devices that are electronic. If the item in the image is not an electronic device (e.g., furniture, clothing, non-electronic household items), you must respond with "No Device Detected" for the device name.
 
 Please format your response EXACTLY as follows:
 
@@ -79,7 +79,7 @@ REUSE IDEAS:
 
 Focus on practical, safe, and creative ways to repurpose the device or its components. Consider both functional reuses and artistic/decorative purposes. If the device is still functional, prioritize extending its useful life. If it's broken, think about how individual components could be repurposed.
 
-If you cannot clearly identify the device, provide your best assessment and general e-waste guidance, and set CO2 and KWH to 0."""
+If you cannot clearly identify the device, provide your best assessment and general e-waste guidance, and set CO2 and KWH to 0. If no device is detected, or if the item is not an electronic device, respond with "No Device Detected" for the device name and set all other fields to 0 or empty."""
                             }
                         ]
                     }
@@ -153,9 +153,15 @@ If you cannot clearly identify the device, provide your best assessment and gene
                 if device_name.lower().startswith(prefix.lower()):
                     device_name = device_name[len(prefix):].strip()
             
+            # Remove parenthetical text
+            device_name = device_name.split('(')[0].strip()
+
             # Capitalize first letter
             if device_name:
                 device_name = device_name[0].upper() + device_name[1:] if len(device_name) > 1 else device_name.upper()
+
+            if device_name == "No Device Detected":
+                return JsonResponse({'class': device_name})
 
             return JsonResponse({
                 'class': device_name,
@@ -243,6 +249,13 @@ def update_tracker(request):
         
         if action == 'dispose_reuse':
             device_name = data.get('device_name')
+
+            if device_name == "No Device Detected":
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Cannot track "No Device Detected"'
+                })
+
             device_co2 = data.get('device_co2', 0)
             device_kwh = data.get('device_kwh', 0)
 
