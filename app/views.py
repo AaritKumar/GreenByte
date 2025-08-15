@@ -54,7 +54,7 @@ def identify_predict(request):
                             },
                             {
                                 "type": "text",
-                                "text": """Identify the electronic device or component in this image and provide comprehensive e-waste guidance. It is crucial that you only identify devices that are electronic. If the item in the image is not an electronic device (e.g., furniture, clothing, non-electronic household items), you must respond with "No Device Detected" for the device name.
+                                "text": """Identify the electronic device or component in this image and provide comprehensive e-waste guidance. It is crucial that you only identify devices that are electronic. If the item in the image is not an electronic device (e.g., furniture, clothing, non-electronic household items), or if the image primarily features a person's face without a clear electronic device, you must respond with "No Device Detected" for the device name.
 
 Please format your response EXACTLY as follows:
 
@@ -79,7 +79,7 @@ REUSE IDEAS:
 
 Focus on practical, safe, and creative ways to repurpose the device or its components. Consider both functional reuses and artistic/decorative purposes. If the device is still functional, prioritize extending its useful life. If it's broken, think about how individual components could be repurposed.
 
-If you cannot clearly identify the device, provide your best assessment and general e-waste guidance, and set CO2 and KWH to 0. If no device is detected, or if the item is not an electronic device, respond with "No Device Detected" for the device name and set all other fields to 0 or empty."""
+If you cannot clearly identify the device, provide your best assessment and general e-waste guidance, and set CO2 and KWH to 0. If no device is detected, if the item is not an electronic device, or if the main subject is a human face, respond with "No Device Detected" for the device name and set all other fields to 0 or empty."""
                             }
                         ]
                     }

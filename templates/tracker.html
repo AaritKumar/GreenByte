@@ -13,6 +13,31 @@
         text-align: center;
         width: 100%;
     }
+    table {
+        width: 100%;
+        margin: 20px 0;
+        border-collapse: collapse;
+        font-size: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    th, td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #ddd;
+        text-align: center;
+    }
+    thead th {
+        background-color: #4caf50;
+        color: white;
+        font-weight: 600;
+    }
+    tbody tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    tbody tr:hover {
+        background-color: #e8f5e8;
+    }
   </style>
 </head>
 <body>
@@ -69,15 +94,24 @@
         {% if devices %}
         <br><br>
         <h3>Tracked Devices</h3>
-        {% for device in devices %}
-          <div class="tracker-stats" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
-              <p><strong>Device Name:</strong> {{ device.device_name }}</p>
-              <br>
-              <p><strong>CO2 Saved:</strong> {{ device.device_co2 }} kg</p>
-              <br>
-              <p><strong>Energy Saved:</strong> {{ device.device_kwh }} kWh</p>
-          </div>
-        {% endfor %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Device Name</th>
+                    <th>CO2 Saved (kg)</th>
+                    <th>Energy Saved (kWh)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for device in devices %}
+                <tr>
+                    <td>{{ device.device_name }}</td>
+                    <td>{{ device.device_co2 }}</td>
+                    <td>{{ device.device_kwh }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
         {% endif %}
       </div>
       {% else %}
